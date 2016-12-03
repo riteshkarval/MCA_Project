@@ -1,0 +1,286 @@
+A major function of the operating system is to hide all this complexity and give the programmer a
+more convenient set of instructions to work with. For example, read block from file is
+conceptually much simpler than having to worry about the details of moving disk heads, waiting
+for them to settle down, and so on.
+On top of the operating system is the rest of the system software. Here we find the command
+interpreter (shell), window systems, compilers, editors, and similar application-independent
+programs. It is important to realize that these programs are definitely not part of the operating
+system, even though they are typically supplied preinstalled by the computer manufacturer, or in
+a package with the operating system if it is installed after purchase. This is a crucial, but subtle,
+point. The operating system is (usually) that portion of the software that runs in kernel mode or
+supervisor mode. It is protected from user tampering by the hardware (ignoring for the
+
+moment some older or low-end microprocessors that do not have hardware protection at all).
+Compilers and editors run in user mode. If a user does not like a particular compiler, he[ ] is
+free to write his own if he so chooses; he is not free to write his own clock interrupt handler,
+which is part of the operating system and is normally protected by hardware against attempts by
+users to modify it.
+This distinction, however, is sometimes blurred in embedded systems (which may not have kernel
+mode) or interpreted systems (such as Java-based systems that use interpretation, not
+hardware, to separate the components). Still, for traditional computers, the operating system is
+what runs in kernel mode.
+That said, in many systems there are programs that run in user mode but which help the
+operating system or perform privileged functions. For example, there is often a program that
+allows users to change their passwords. This program is not part of the operating system and
+does not run in kernel mode, but it clearly carries out a sensitive function and has to be protected
+in a special way.
+In some systems, including MINIX 3, this idea is carried to an extreme form, and pieces of what is
+traditionally considered to be the operating system (such as the file system) run in user space. In
+such systems, it is difficult to draw a clear boundary. Everything running in kernel mode is clearly
+part of the operating system, but some programs running outside it are arguably also part of it,
+or at least closely associated with it. For example, in MINIX 3, the file system is simply a big C
+program running in user-mode.
+Finally, above the system programs come the application programs. These programs are
+purchased (or written by) the users to solve their particular problems, such as word processing,
+spreadsheets, engineering calculations, or storing information in a database.
+The Operating System as an Extended Machine
+As mentioned earlier, the architecture (instruction set, memory organization, I/O, and bus
+structure) of most computers at the machine language level is primitive and awkward to program,
+especially for input/output. To make this point more concrete, let us briefly look at how floppy
+disk I/O is done using the NEC PD765 compatible controller chips used on many Intel-based
+personal computers. (Throughout this book we will use the terms "floppy disk" and "diskette"
+interchangeably.) The PD765 has 16 commands, each specified by loading between 1 and 9 bytes
+into a device register. These commands are for reading and writing data, moving the disk arm,
+and formatting tracks, as well as initializing, sensing, resetting, and recalibrating the controller
+and the drives.
+The most basic commands are read and write, each of which requires 13 parameters, packed into
+9 bytes. These parameters specify such items as the address of the disk block to be read, the
+number of sectors per track, the recording mode used on the physical medium, the intersector
+gap spacing, and what to do with a deleted-data-address-mark. If you do not understand this
+mumbo jumbo, do not worry; that is precisely the pointit is rather esoteric. When the operation is
+completed, the controller chip returns 23 status and error fields packed into 7 bytes. As if this
+were not enough, the floppy disk programmer must also be constantly aware of whether the
+motor is on or off. If the motor is off, it must be turned on (with a long startup delay) before data
+can be read or written. The motor cannot be left on too long, however, or the floppy disk will wear
+out. The programmer is thus forced to deal with the trade-off between long startup delays versus
+wearing out floppy disks (and losing the data on them).
+Without going into the real details, it should be clear that the average programmer probably does
+not want to get too intimately involved with the programming of floppy disks (or hard disks, which
+are just as complex and quite different). Instead, what the programmer wants is a simple, highlevel abstraction to deal with. In the case of disks, a typical abstraction would be that the disk
+contains a collection of named files. Each file can be opened for reading or writing, then read or
+written, and finally closed. Details such as whether or not recording should use modified
+frequency modulation and what the current state of the motor is should not appear in the
+abstraction presented to the user.
+The program that hides the truth about the hardware from the programmer and presents a nice,
+simple view of named files that can be read and written is, of course, the operating system. Just
+as the operating system shields the programmer from the disk hardware and presents a simple
+file-oriented interface, it also conceals a lot of unpleasant business concerning interrupts, timers,
+
+memory management, and other low-level features. In each case, the abstraction offered by the
+operating system is simpler and easier to use than that offered by the underlying hardware.
+In this view, the function of the operating system is to present the user with the equivalent of an
+extended machine or virtual machine that is easier to program than the underlying hardware.
+How the operating system achieves this goal is a long story, which we will study in detail
+throughout this book. To summarize it in a nutshell, the operating system provides a variety of
+services that programs can obtain using special instructions called system calls. We will examine
+some of the more common system calls later in this chapter.
+
+1.1.2. The Operating System as a Resource Manager
+The concept of the operating system as primarily providing its users with a convenient interface is
+a top-down view. An alternative, bottom-up, view holds that the operating system is there to
+manage all the pieces of a complex system. Modern computers consist of processors, memories,
+timers, disks, mice, network interfaces, printers, and a wide variety of other devices. In the
+alternative view, the job of the operating system is to provide for an orderly and controlled
+allocation of the processors, memories, and I/O devices among the various programs competing
+for them.
+Imagine what would happen if three programs running on some computer all tried to print their
+output simultaneously on the same printer. The first few lines of printout might be from program
+1, the next few from program 2, then some from program 3, and so forth. The result would be
+chaos. The operating system can bring order to the potential chaos by buffering all the output
+destined for the printer on the disk. When one program is finished, the operating system can then
+copy its output from the disk file where it has been stored to the printer, while at the same time
+the other program can continue generating more output, oblivious to the fact that the output is
+not really going to the printer (yet).
+When a computer (or network) has multiple users, the need for managing and protecting the
+memory, I/O devices, and other resources is even greater, since the users might otherwise
+interfere with one another. In addition, users often need to share not only hardware, but
+information (files, databases, etc.) as well. In short, this view of the operating system holds that
+its primary task is to keep track of who is using which resource, to grant resource requests, to
+account for usage, and to mediate conflicting requests from different programs and users.
+Resource management includes multiplexing (sharing) resources in two ways: in time and in
+space. When a resource is time multiplexed, different programs or users take turns using it. First
+one of them gets to use the resource, then another, and so on. For example, with only one CPU
+and multiple programs that want to run on it, the operating system first allocates the CPU to one
+program, then after it has run long enough, another one gets to use the CPU, then another, and
+then eventually the first one again. Determining how the resource is time multiplexedwho goes
+next and for how longis the task of the operating system. Another example of time multiplexing is
+sharing the printer. When multiple print jobs are queued up for printing on a single printer, a
+decision has to be made about which one is to be printed next.
+The other kind of multiplexing is space multiplexing. Instead of the customers taking turns, each
+one gets part of the resource. For example, main memory is normally divided up among several
+running programs, so each one can be resident at the same time (for example, in order to take
+turns using the CPU). Assuming there is enough memory to hold multiple programs, it is more
+efficient to hold several programs in memory at once rather than give one of them all of it,
+especially if it only needs a small fraction of the total. Of course, this raises issues of fairness,
+
+protection, and so on, and it is up to the operating system to solve them. Another resource that is
+space multiplexed is the (hard) disk. In many systems a single disk can hold files from many
+users at the same time. Allocating disk space and keeping track of who is using which disk blocks
+is a typical operating system resource management task.
+Armed with our general knowledge of how MINIX 3 deals with processes and files, we can now
+begin to look at the interface between the operating system and its application programs, that is,
+the set of system calls. Although this discussion specifically refers to POSIX (International
+Standard 9945-1), hence also to MINI 3, UNIX, and Linux, most other modern operating systems
+have system calls that perform the same functions, even if the details differ. Since the actual
+mechanics of issuing a system call are highly machine dependent, and often must be expressed in
+assembly code, a procedure library is provided to make it possible to make system calls from C
+programs.
+It is useful to keep the following in mind: any single-CPU computer can execute only one
+instruction at a time. If a process is running a user program in user mode and needs a system
+service, such as reading data from a file, it has to execute a trap or system call instruction to
+transfer control to the operating system. The operating system then figures out what the calling
+process wants by inspecting the parameters. Then it carries out the system call and returns
+control to the instruction following the system call. In a sense, making a system call is like making
+a special kind of procedure call, only system calls enter the kernel or other privileged operating
+system components and procedure calls do not.
+[Page 27]
+
+To make the system call mechanism clearer, let us take a quick look at read . It has three
+parameters: the first one specifying the file, the second one specifying the buffer, and the third
+one specifying the number of bytes to read. A call to read from a C program might look like this:
+count = read(fd, buffer, nbytes);
+
+The system call (and the library procedure) return the number of bytes actually read in count .
+This value is normally the same as nbytes , but may be smaller, if, for example, end-of-file is
+encountered while reading.
+If the system call cannot be carried out, either due to an invalid parameter or a disk error, count
+is set to 1, and the error number is put in a global variable, errno . Programs should always check
+the results of a system call to see if an error occurred.
+MINIX 3 has a total of 53 main system calls. These are listed in Fig. 1-9 , grouped for convenience
+in six categories. A few other calls exist, but they have very specialized uses so we will omit them
+here. In the following sections we will briefly examine each of the calls of Fig. 1-9 to see what it
+does. To a large extent, the services offered by these calls determine most of what the operating
+system has to do, since the resource management on personal computers is minimal (at least
+compared to big machines with many users).
+Process management
+System Calls for Process Management
+The first group of calls in Fig. 1-9 deals with process management. Fork is a good place to start
+the discussion. Fork is the only way to create a new process in MINIX 3. It creates an exact
+duplicate of the original process, including all the file descriptors, registerseverything. After the
+fork , the original process and the copy (the parent and child) go their separate ways. All the
+
+variables have identical values at the time of the fork , but since the parent's data are copied to
+create the child, subsequent changes in one of them do not affect the other one. (The program
+text, which is unchangeable, is shared between parent and child.) The fork call returns a value,
+which is zero in the child and equal to the child's process identifier or PID in the parent. Using the
+returned PID, the two processes can see which one is the parent process and which one is the
+child process.
+[Page 29]
+
+In most cases, after a fork , the child will need to execute different code from the parent.
+Consider the shell. It reads a command from the terminal, forks off a child process, waits for the
+child to execute the command, and then reads the next command when the child terminates. To
+wait for the child to finish, the parent executes a waitpid system call, which just waits until the
+child terminates (any child if more than one exists). Waitpid can wait for a specific child, or for
+any old child by setting the first parameter to 1. When waitpid completes, the address pointed to
+by the second parameter, statloc , will be set to the child's exit status (normal or abnormal
+termination and exit value). Various options are also provided, specified by the third parameter.
+The waitpid call replaces the previous wait call, which is now obsolete but is provided for reasons
+of backward compatibility.
+Now consider how fork is used by the shell. When a command is typed, the shell forks off a new
+process. This child process must execute the user command. It does this by using the execve
+system call, which causes its entire core image to be replaced by the file named in its first
+parameter. (Actually, the system call itself is exec , but several different library procedures call it
+with different parameters and slightly different names. We will treat these as system calls here.)
+System Calls for Signaling
+Although most forms of interprocess communication are planned, situations exist in which
+unexpected communication is needed. For example, if a user accidently tells a text editor to list
+the entire contents of a very long file, and then realizes the error, some way is needed to
+interrupt the editor. In MINIX 3, the user can hit the CTRL-C key on the keyboard, which sends a
+signal to the editor. The editor catches the signal and stops the print-out. Signals can also be
+used to report certain traps detected by the hardware, such as illegal instruction or floating point
+overflow. Timeouts are also implemented as signals.
+[Page 32]
+
+When a signal is sent to a process that has not announced its willingness to accept that signal, the
+process is simply killed without further ado. To avoid this fate, a process can use the sigaction
+system call to announce that it is prepared to accept some signal type, and to provide the address
+of the signal handling procedure and a place to store the address of the current one. After a
+sigaction call, if a signal of the relevant type is generated (e.g., by pressing CTRL-C), the state
+
+of the process is pushed onto its own stack, and then the signal handler is called. It may run for
+as long as it wants to and perform any system calls it wants to. In practice, though, signal
+handlers are usually fairly short. When the signal handling procedure is done, it calls sigreturn to
+continue where it left off before the signal. The sigaction call replaces the older signal call, which
+is now provided as a library procedure, however, for backward compatibility.
+Signals can be blocked in MINIX 3. A blocked signal is held pending until it is unblocked. It is not
+delivered, but also not lost. The sigprocmask call allows a process to define the set of blocked
+signals by presenting the kernel with a bitmap. It is also possible for a process to ask for the set
+of signals currently pending but not allowed to be delivered due to their being blocked. The
+sigpending call returns this set as a bitmap. Finally, the sigsuspend call allows a process to
+atomically set the bitmap of blocked signals and suspend itself.
+Instead of providing a function to catch a signal, the program may also specify the constant
+SIG_IGN to have all subsequent signals of the specified type ignored, or SIG_DFL to restore the
+default action of the signal when it occurs. The default action is either to kill the process or ignore
+the signal, depending upon the signal. As an example of how SIG_IGN is used, consider what
+happens when the shell forks off a background process as a result of
+command &
+
+It would be undesirable for a SIGINT signal (generated by pressing CTRL-C) to affect the
+background process, so after the fork but before the exec , the shell does
+sigaction(SIGINT, SIG_IGN, NULL);
+
+and
+sigaction(SIGQUIT, SIG_IGN, NULL);
+
+to disable the SIGINT and SIGQUIT signals. (SIGQUIT is generated by CTRL-\; it is the same as
+SIGINT generated by CTRL-C except that if it is not caught or ignored it makes a core dump of
+the process killed.) For foreground processes (no ampersand), these signals are not ignored.
+
+One way of looking at a process is that it is a way to group related resources together. A process
+has an address space containing program text and data, as well as other resources. These
+resources may include open files, child processes, pending alarms, signal handlers, accounting
+information, and more. By putting them together in the form of a process, they can be managed
+more easily.
+The other concept a process has is a thread of execution, usually shortened to just thread. The
+thread has a program counter that keeps track of which instruction to execute next. It has
+registers, which hold its current working variables. It has a stack, which contains the execution
+history, with one frame for each procedure called but not yet returned from. Although a thread
+must execute in some process, the thread and its process are different concepts and can be
+treated separately. Processes are used to group resources together; threads are the entities
+scheduled for execution on the CPU.
+What threads add to the process model is to allow multiple executions to take place in the same
+process environment, to a large degree independent of one another. In Fig. 2-6(a) we see three
+traditional processes. Each process has its own address space and a single thread of control. In
+contrast, in Fig. 2-6(b) we see a single process with three threads of control. Although in both
+cases we have three threads, in Fig. 2-6(a) each of them operates in a different address space,
+whereas in Fig. 2-6(b) all three of them share the same address space.
+In other systems, the operating system is aware of the existence of multiple threads per process,
+so when a thread blocks, the operating system chooses the next one to run, either from the same
+process or a different one. To do scheduling, the kernel must have a thread table that lists all the
+threads in the system, analogous to the process table.
+Although these two alternatives may seem equivalent, they differ considerably in performance.
+Switching threads is much faster when thread management is done in user space than when a
+system call is needed. This fact argues strongly for doing thread management in user space. On
+the other hand, when threads are managed entirely in user space and one thread blocks (e.g.,
+waiting for I/O or a page fault to be handled), the kernel blocks the entire process, since it is not
+even aware that other threads exist. This fact as well as others argue for doing thread
+management in the kernel (Boehm, 2005). As a consequence, both systems are in use, and
+various hybrid schemes have been proposed as well (Anderson et al., 1992).
+No matter whether threads are managed by the kernel or in user space, they introduce a raft of
+problems that must be solved and which change the programming model appreciably. To start
+with, consider the effects of the fork system call. If the parent process has multiple threads,
+should the child also have them? If not, the process may not function properly, since all of them
+may be essential.
+However, if the child process gets as many threads as the parent, what happens if a thread was
+blocked on a read call, say, from the keyboard? Are two threads now blocked on the keyboard?
+When a line is typed, do both threads get a copy of it? Only the parent? Only the child? The same
+problem exists with open network connections.
+Another class of problems is related to the fact that threads share many data structures. What
+happens if one thread closes a file while another one is still reading from it? Suppose that one
+thread notices that there is too little memory and starts allocating more memory. Then, part way
+through, a thread switch occurs, and the new thread also notices that there is too little memory
+and also starts allocating more memory. Does the allocation happen once or twice? In nearly all
+systems that were not designed with threads in mind, the libraries (such as the memory
+allocation procedure) are not reentrant, and will crash if a second call is made while the first one
+is still active.
+
+Another problem relates to error reporting. In UNIX, after a system call, the status of the call is
+put into a global variable, errno. What happens if a thread makes a system call, and before it is
+able to read errno, another thread makes a system call, wiping out the original value?
+Next, consider signals. Some signals are logically thread specific; others are not. For example, if a
+thread calls alarm, it makes sense for the resulting signal to go to the thread that made the call.
+When the kernel is aware of threads, it can usually make sure the right thread gets the signal.
+When the kernel is not aware of threads, the threads package must keep track of alarms by itself.
+An additional complication for user-level threads exists when (as in UNIX) a process may only
+have one alarm at a time pending and several threads call alarm independently.

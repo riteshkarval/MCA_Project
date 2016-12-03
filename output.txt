@@ -1,0 +1,34 @@
+m1. ________es frequently need to communicate, for instance in a shell pipeline, the output of the first process need to pass to the second one, and so on to the other process.
+process
+
+m2. [1][3]
+Inter-________ communication[edit]
+Main article: Inter-process communication
+When processes communicate with each other it is called "Inter-process communication" (IPC).
+process
+
+h3. The ________ is removed instantly or is moved to the "terminated" state.
+process
+
+m4. [1]
+The operating system holds most of this information about active ________es in data structures called process control blocks.
+process
+
+m5. Once the ________ finishes execution, or is terminated by the operating system, it is no longer needed.
+process
+
+h6. The ________ state is changed back to "waiting" when the process no longer needs to wait.
+process
+
+m7. The state is typically stored in computer registers when the ________ is executing, and in memory otherwise.
+process
+
+h8. The execution of multiple ________es seemingly simultaneously is called concurrency.
+process
+
+h9. ________or state (context), such as the content of registers, physical memory addressing, etc.
+process
+
+m10. If a ________ needs to wait for a resource (wait for user input or file to open ...), it is assigned the "blocked" state.
+process
+
